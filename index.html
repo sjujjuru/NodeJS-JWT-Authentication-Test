@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.20.0/axios.min.js" integrity="sha512-quHCp3WbBNkwLfYUMd+KwBAgpVukJu5MncuQaWXgCrfgcxCJAq/fo+oqrRKOj+UKEmyMCG3tb8RB63W+EmrOBg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1 class="row">Login</h1>
+
+        <main>
+            <div class="row">
+                <label for="username">username</label>
+                <input type="text" name="username" id="username">
+            </div>
+            <div class="row">
+                <label for="password">password</label>
+                <input type="password" name="password" id="password">
+            </div>
+            <div>
+                <button onclick="login()">Login</button>
+                <button onclick="getDashboard()">Get Dashboard</button>
+                <button onclick="getSettings()">Get Settings</button>
+            </div>
+        </main>
+    </div>
+<script>
+
+    function logout(){
+        alert("Token is no longer valid");
+        localStorage.removeItem("jwt");
+        localStorage.removeItem("expDate");
+        location.replace('/');
+    }
+
+    function autoLogout(){
+        const expDate = localStorage.getItem('expDate');
+        if(!expDate){
+            console.log("No token. Please log in");
+        }
+        else{
+            if (Date.now() >= expDate * 1000) {
+                alert("Token is expired");
+                localStorage.removeItem("jwt");
+                localStorage.removeItem("expDate");
+                location.replace('/');
+                return false;
+            }
+            else{
+                currTime = Date.now();
+                leftTime = (expDate*1000) - currTime;
+                setTimeout(this.logout,leftTime);
+            }
+        }
+    }
+    
+    function login() {
+        const data = {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value,
+        };
+        
+        axios.post('/api/login', data)
+        .then(res  => {
+            console.log(res);
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            if(res && res.data && res.data.success){
+                const token = res.data.token;
+                const expDate = res.data.expDate;
+                localStorage.setItem('jwt', token);
+                localStorage.setItem('expDate', expDate);
+                // setTimeout(autoLogout(),60000);
+                getDashboard();
+            }
+        });
+    }
+    function getDashboard(){
+        const token = localStorage.getItem('jwt');
+        const expDate = localStorage.getItem('expDate');
+        autoLogout();
+        //setTimeout(autoLogout(),60000);
+        axios.get('/api/dashboard', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        }).then(res => {
+            if (res && res.data && res.data.success){
+                history.pushState(null, null, "dashboard");
+                document.querySelector('h1.row').innerHTML = 'Dashboard';
+                document.querySelector('main').innerHTML = res.data.myContent;
+            }
+            else {
+                    localStorage.removeItem('jwt');
+                    window.location.href = '/';
+                }
+        });
+    }
+    function getSettings(){
+        const token = localStorage.getItem('jwt');
+        const expDate = localStorage.getItem('expDate');
+        autoLogout();
+        axios.get('/api/settings', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        }).then(res => {
+            if (res && res.data && res.data.success){
+                
+                history.pushState(null, null, "settings");
+                document.querySelector('h1.row').innerHTML = 'Settings';
+                document.querySelector('main').innerHTML = res.data.myContent;
+            }
+            else {
+                    localStorage.removeItem('jwt');
+                    window.location.href = '/';
+                }
+        });
+    }
+</script>
+</body>
+</html>
